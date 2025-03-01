@@ -4,3 +4,5 @@
 *.dll       # Windows libraries
 *.o         # Object files
 *.a         # Static libraries
+
+server
