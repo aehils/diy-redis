@@ -5,4 +5,8 @@
 *.o         # Object files
 *.a         # Static libraries
 
+# OR ignore all files with no extension (common for Unix executables)
+*.
+!*.*
+
 server
