@@ -1,0 +1,6 @@
+# Exclude all compiled binaries (common patterns)
+*.exe       # Windows executables
+*.out       # Unix executables (e.g., compiled with gcc)
+*.dll       # Windows libraries
+*.o         # Object files
+*.a         # Static libraries
