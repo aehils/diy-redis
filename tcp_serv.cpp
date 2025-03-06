@@ -5,7 +5,7 @@
 #include <iostream>
 #include <unistd.h>
 
-static void do_something(int connfd) {
+static void interact(int connfd) {
     char rbuf[64] = {};
     ssize_t n = read(connfd, rbuf, sizeof(rbuf) - 1);
     if (n < 0) {
@@ -45,7 +45,7 @@ int main(){
         perror(nullptr); // This will print the error message corresponding to errno
         exit(EXIT_FAILURE);
     }
-    
+
     //the socket is actually created after listen()
     //only parameters have been passed up to this point
     rv = listen(fd, SOMAXCONN);
@@ -62,7 +62,7 @@ int main(){
         if (connfd < 0) {
             continue;
         }
-        do_something(connfd);
+        interact(connfd);
         close(connfd);
     }
     return 0;
