@@ -5,6 +5,23 @@
 #include <iostream>
 #include <unistd.h>
 
+static void do_something(int connfd) {
+    char rbuf[64] = {};
+    ssize_t n = read(connfd, rbuf, sizeof(rbuf) - 1);
+    if (n < 0) {
+        std::cerr << "read() failed: " << strerror(errno) << std::endl;
+        return;
+    }
+    if (n == 0) {
+        std::cerr << "client disconnected" << std::endl;
+        return;
+    }
+    std::cout << "client msg received: " << rbuf << std::endl;
+
+    char wbuf[64] = "received\n";
+    write(connfd, wbuf, strlen(wbuf));
+}
+
 int main(){
 
     //creating the socket in IPv4 type TCP
@@ -45,25 +62,8 @@ int main(){
         if (connfd < 0) {
             continue;
         }
-    do_something(connfd);
-    close(connfd);
+        do_something(connfd);
+        close(connfd);
     }
-}
-
-static void do_something(int connfd) {
-    char rbuf[64] = {};
-    ssize_t n = read(connfd, rbuf, sizeof(rbuf -1));
-    if (n < 0) {
-        std::cerr << "read() failed: " << strerror(errno) << std::endl;
-        return;
-    }
-    if (n == 0) {
-        std::cerr << "client disconnected" << std::endl;
-        return;
-    }
-    std::cout << "client msg received: " << rbuf << std::endl;
-
-    char wbuf[64] = "message acknowledged";
-    write(connfd, wbuf, sizeof(wbuf));
-
+    return 0;
 }
