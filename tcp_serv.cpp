@@ -18,7 +18,7 @@ static void interact(int connfd) {
     }
     std::cout << "client msg received: " << rbuf << std::endl;
 
-    char wbuf[64] = "received\n";
+    char wbuf[64] = "acknowledged\n";
     write(connfd, wbuf, strlen(wbuf));
 }
 

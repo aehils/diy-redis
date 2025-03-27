@@ -23,7 +23,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    char msg[] = "hello";
+    char msg[] = "Hey!";
     write(fd, msg, strlen(msg));
 
     char rbuf[64] = {};
