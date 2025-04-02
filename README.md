@@ -1,4 +1,3 @@
-# DIY Redis: Custom In-Memory Data Store in C/C++
-First time building my own Redis.
+# DIY Redis: High Performance In-Memory Data Store in C/C++
 
 Documentation in progress...
