@@ -84,7 +84,7 @@ static int32_t request_from(int connfd) {
     }
     // okay so we have our message, we do something with it
     // for now we just print it ig
-    printf("client msg: %.*s,len, rbuf[4]");
+    printf("client msg: %.*s\n" ,len, &rbuf[4]);
 
     // send a response
     const char response[] = "message received";
@@ -93,7 +93,6 @@ static int32_t request_from(int connfd) {
     memcpy(wbuf, &len, 4);
     memcpy(&wbuf[4],response, len);
     return write_all(connfd, wbuf, 4 + len);
-
 }
 
 int main(){
@@ -136,7 +135,14 @@ int main(){
         if (connfd < 0) {
             continue;
         }
-        interact(connfd);
+        
+        // try to process all incoming requests on this connection
+        while (true) {
+            int rv = request_from(connfd);
+            if (rv < 0) { // error reading request or client closed connection
+                break;
+            }
+        }
         close(connfd);
     }
     return 0;
