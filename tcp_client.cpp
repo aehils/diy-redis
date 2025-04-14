@@ -11,9 +11,16 @@ const size_t k_max_msg = 4096;
 static int32_t read_full(int fd, char *buf, size_t n){
     while (n > 0) {
         ssize_t rv = read(fd, buf, n);
-        if (rv <= 0) {
-            return -1; // unexpected EOF or error reading
+        if (rv < 0) {
+            if (errno == EINTR) {
+                continue;   // retry after signal interrupt
+            }
+            else { return -1;} // read error has occurred
         }
+        else if (rv == 0) {
+            return -1; // unexpected EOF
+        }
+
         assert((size_t)rv <= n);
         buf += n;
         n -= (size_t)rv;
@@ -24,8 +31,13 @@ static int32_t read_full(int fd, char *buf, size_t n){
 static int32_t write_all(int fd, const char *buf, size_t n) {
     while (n > 0) {
         ssize_t rv = write(fd, buf, n);
-        if (rv <= 0){
-            return -1;
+        if (rv < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+        }
+        if (rv == 0) {
+            return -1; // no bytes written, an error has occurred
         }
         assert((size_t)rv <= n);
         buf += rv;
