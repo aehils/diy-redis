@@ -127,5 +127,13 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
+    // set listening socket to non-blocking
+    set_nonblocking(fd);
+
+    // mapping client connections to fds, keyed by fd
+    std::vector<Connected *>fd_conn_map;
+
+    
+
     return 0;
 }
