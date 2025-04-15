@@ -5,8 +5,29 @@
 #include <iostream>
 #include <unistd.h>
 #include <cassert>
+#include <sys/fcntl.h>
 
 const size_t k_max_message = 4096;
+
+static void set_nonblocking(int fd) {
+    // get current file status flags
+    errno = 0;
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl(F_GETFL) failed.");
+        exit(EXIT_FAILURE);
+    }
+
+    // combining acquired flag with NONBLOCK
+    flags |= O_NONBLOCK;
+
+    // set flag
+    errno = 0;
+    if (fcntl(fd, F_SETFL, flags) == -1) {
+        perror("fcntl(F_SETFL failed.");
+        exit(EXIT_FAILURE);
+    }
+}
 
 // functions to read & write in loops
 // given by `n`, the number of bytes to be read or written
