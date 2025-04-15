@@ -30,6 +30,15 @@ static void set_nonblocking(int fd) {
     }
 }
 
+// append client data to incoming buffer
+static void append_buffer(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
+    buf.insert(buf.end(), data, data + len);
+}
+// delete client data from the front of a buffer
+static void consume_buffer(std::vector<uint8_t> &buf, size_t n) {
+    buf.erase(buf.begin(), buf.begin() + n);
+}
+
 // functions to read & write in loops
 // given by `n`, the number of bytes to be read or written
 static int32_t read_full(int fd, char *buf, size_t n){
