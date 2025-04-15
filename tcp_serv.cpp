@@ -69,6 +69,18 @@ static int32_t write_all(int fd, const char *buf, size_t n) {
     return 0;
 }
 
+struct Connected {
+    // client socket handle
+    int fd = -1;
+    // application intention in the event loop
+    bool want_read = false;
+    bool want_write = false;
+    bool want_close = false;
+    // buffering i/o
+    std::vector<uint8_t> incoming;  // data to be parsed by the application
+    std::vector<uint8_t> outgoing;  // response data from the app, to be sent
+    };
+
 int main(){
 
     // listening socket fd
