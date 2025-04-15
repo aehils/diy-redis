@@ -5,6 +5,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <cassert>
+#include <poll.h>
 #include <sys/fcntl.h>
 
 const size_t k_max_message = 4096;
@@ -133,7 +134,53 @@ int main(){
     // mapping client connections to fds, keyed by fd
     std::vector<Connected *>fd_conn_map;
 
-    
+    // event loop
+    std::vector<pollfd> socketNotifiers; // list of socket notifiers
+    while (true) {
+        socketNotifiers.clear();
+        // listening socket first into notifiers
+        struct pollfd askListen = {fd, POLLIN, 0};
+        socketNotifiers.push_back(askListen);
+
+        // all the connection sockets into notifiers
+        for (Connected *connected : fd_conn_map) {
+            struct pollfd client {connected->fd, POLLERR, 0}; // default check for error
+
+            //check for io intent
+            if (connected->want_read) {client.events |= POLLIN;}
+            if (connected->want_write) {client.events |= POLLOUT;}
+            socketNotifiers.push_back(client);
+        }
+
+        // ready or not? waiting for readiness
+        int rv = poll(socketNotifiers.data(), (nfds_t)socketNotifiers.size(), -1);
+            if (rv < 0 && errno == EINTR) {
+                continue; // signal interrupt, try again. don't treat as error
+            }
+            if (rv < 0) {
+                std::cerr << "poll() failure" << std::endl;
+            }
+
+        /* if program is here, then at least one of the sockets is ready, its notifier active */
+
+        // handle the ready listener
+        // if there is a connection request, accept it
+        if (socketNotifiers[0].revents) {
+            if (Connected *connected = connection_accept(fd)) {
+                // then add in the fd mapping
+                // but first, check if there's a spot for it
+                // if not, resize the vector before populating
+                if (fd_conn_map.size() <= (size_t)connected->fd) {
+                    fd_conn_map.resize(connected->fd + 1);
+                }
+                fd_conn_map[connected->fd] = connected;
+            }
+        }
+    }
+
+    // handle the connection sockets in the loop!!!
+    // you need your read and write handlers to do this
+    // script those first
 
     return 0;
 }
