@@ -8,7 +8,6 @@
 #include <poll.h>
 #include <sys/fcntl.h>
 
-const size_t k_max_message = 4096;
 
 static void set_nonblocking(int fd) {
     // get current file status flags
