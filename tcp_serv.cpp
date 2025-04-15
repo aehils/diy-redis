@@ -108,6 +108,40 @@ static Connected *connection_accept(int fd) {
     connected->want_read = true; // safe bet, check if data is available and move on if it isn’t
 }
 
+static void nb_read (Connected *connected){
+    // do a single non-blocking read
+    uint8_t rbuf[64 *1024];
+    ssize_t rv = read(connected->fd, rbuf, sizeof(rbuf));
+    if (rv < 0) {
+        if (errno == EINTR){
+            perror("RETRY: read signal was interrupted");
+            return; // retry later, don't treat as an error
+        } 
+        else if (errno == EAGAIN){
+            perror("RETRY: socket not ready");
+            return;
+        } 
+        else {
+            perror("read error");
+            connected->want_close = true;
+            return;
+        }
+    }
+    if (rv == 0){
+        if (connected->incoming.empty()){
+            perror("CLOSE: client not connected");
+            connected->want_close = true;
+            return;
+        } else {
+            perror("CLOSE: unexpected EOF");
+            connected->want_close = true; // EOF - ask to close connection
+            return;
+        }
+    }
+    // append_buffer()
+    append_buffer(connected->incoming, rbuf, (size_t)rv);
+}
+
 int main(){
 
     // listening socket fd
