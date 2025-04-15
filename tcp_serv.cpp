@@ -81,6 +81,23 @@ struct Connected {
     std::vector<uint8_t> outgoing;  // response data from the app, to be sent
     };
 
+static Connected *connection_accept(int fd) {
+    // create stuct to store address info
+    struct sockaddr_in client_addr = {};
+    socklen_t addrlen = sizeof(client_addr);
+    // accept
+    int connfd = accept(fd, (sockaddr *)&client_addr, &addrlen);
+    if (connfd < 0) {
+        return NULL;
+    }
+    set_nonblocking(connfd); // set nb for connfd so accept is nonblocking
+
+    // use connnect to populate a new Conn object
+    Connected *connected = new Connected();
+    connected->fd = connfd;
+    connected->want_read = true; // safe bet, check if data is available and move on if it isn’t
+}
+
 int main(){
 
     // listening socket fd
