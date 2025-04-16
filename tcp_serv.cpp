@@ -224,7 +224,7 @@ static bool try_single_request(Connected *connected) {
     return true; // successfully parsed a complete message - (bool) let the caller know
 }
 
-int main(){
+int main() {
 
     // listening socket fd
     int fd = socket(AF_INET, SOCK_STREAM, 0);
