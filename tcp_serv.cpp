@@ -107,6 +107,8 @@ static Connected *connection_accept(int fd) {
     Connected *connected = new Connected();
     connected->fd = connfd;
     connected->want_read = true; // safe bet, check if data is available and move on if it isn’t
+
+    return connected;
 }
 
 static void nb_read(Connected *connected) {
@@ -156,7 +158,7 @@ static void nb_write(Connected *connected) {
     // do a single non-bloacking write 
     // first make sure there's actually something in ::outgoing to write to this client
     assert(connected->outgoing.size() > 0);
-    size_t rv = write(connected->fd, connected->outgoing.data(), connected->outgoing.size());
+    ssize_t rv = write(connected->fd, connected->outgoing.data(), connected->outgoing.size());
     if (rv < 0) {
         if (errno == EINTR) {
             perror("RETRY: signal interrupted");
@@ -190,9 +192,9 @@ static void nb_write(Connected *connected) {
 }
 
 static bool try_single_request(Connected *connected) {
-    // try to parse the accumulated buffer
-    // process the parsed message
-    // remove the message from incoming bufffer
+    /* try to parse the accumulated buffer
+        process the parsed message
+        remove the message from incoming buffer  */
 
     // check that the data suffices a header at least
     if (connected->incoming.size() < 4) {
