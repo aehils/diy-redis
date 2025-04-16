@@ -298,14 +298,33 @@ int main(){
                 if (fd_conn_map.size() <= (size_t)connected->fd) {
                     fd_conn_map.resize(connected->fd + 1);
                 }
+                // check that there isnt a connection already stored at [conn::fd]
+                assert(!fd_conn_map[connected->fd]);
                 fd_conn_map[connected->fd] = connected;
             }
         }
-    }
 
-    // handle the connection sockets in the loop!!!
-    // you need your read and write handlers to do this
-    // script those first
+        // handle the client socket connections
+        for (size_t i = 1; i < socketNotifiers.size(); i++) {
+            uint32_t ready = socketNotifiers[i].revents;
 
+            Connected *connected = fd_conn_map[socketNotifiers[i].fd];
+            if (ready && POLLIN) {
+                assert(connected->want_read == true);
+                nb_read(connected);
+            }
+            if (ready && POLLOUT) {
+                assert(connected->want_write == true);
+                nb_write(connected);
+            }
+            if ((ready && POLLERR) || connected->want_close) {
+                // error, close the connection
+                perror("CLOSED CLIENT CONNECTION");
+                (void)close(fd);
+                fd_conn_map[connected->fd] = NULL;
+                delete connected;
+            }
+        } // for all client connections
+    } // end of event loop
     return 0;
 }
