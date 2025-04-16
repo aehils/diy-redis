@@ -9,6 +9,8 @@
 #include <sys/fcntl.h>
 
 
+const size_t k_max_msg = 4096;  
+
 static void set_nonblocking(int fd) {
     // get current file status flags
     errno = 0;
@@ -107,7 +109,7 @@ static Connected *connection_accept(int fd) {
     connected->want_read = true; // safe bet, check if data is available and move on if it isn’t
 }
 
-static void nb_read (Connected *connected){
+static void nb_read(Connected *connected) {
     // do a single non-blocking read
     uint8_t rbuf[64 *1024];
     ssize_t rv = read(connected->fd, rbuf, sizeof(rbuf));
