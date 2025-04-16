@@ -118,12 +118,12 @@ static void nb_read(Connected *connected) {
             perror("RETRY: read signal was interrupted");
             return; // retry later, don't treat as an error
         } 
-        else if (errno == EAGAIN){
+        else if (errno == EAGAIN || errno == EWOULDBLOCK){
             perror("RETRY: socket not ready");
             return;
         } 
         else {
-            perror("read error");
+            perror("CLOSE: read error");
             connected->want_close = true;
             return;
         }
@@ -139,10 +139,54 @@ static void nb_read(Connected *connected) {
             return;
         }
     }
-    // append_buffer()
+    // put everything read from rbuf into ::incoming for this connection
     append_buffer(connected->incoming, rbuf, (size_t)rv);
     // check if the data in the buffer makes a complete request
     try_single_request(connected);
+
+    // if the program has response for this connection, change flag to write
+    if (connected->outgoing.size() > 0) {   
+        connected->want_read = false;
+        connected->want_write = true;
+        // if no response, leave on read incase new msg
+    }
+}
+
+static void nb_write(Connected *connected) {
+    // do a single non-bloacking write 
+    // first make sure there's actually something in ::outgoing to write to this client
+    assert(connected->outgoing.size() > 0);
+    size_t rv = write(connected->fd, connected->outgoing.data(), connected->outgoing.size());
+    if (rv < 0) {
+        if (errno == EINTR) {
+            perror("RETRY: signal interrupted");
+            return;
+        }
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            perror("RETRY: socket not ready");
+            return;
+        }
+        else {
+            perror("CLOSE: write errror");
+            connected->want_close = true;
+            return;
+        }
+    }
+    else if (rv == 0) {
+        // 0 rv means the connection was probably closed by the remote peer
+        perror("CLOSE: no bytes written to client. connection likely closed");
+        connected->want_close = true;
+        return;
+    }
+
+    // consume from ::outgoing
+    consume_buffer(connected->outgoing, (size_t)rv);
+    // if ::outgoing is now empty, allow the program to read new requests in this connection
+    if (connected->outgoing.size() == 0) {
+        connected->want_write = false;
+        connected->want_read = true;
+        // if ::outgoing is not empty, the flag doesnt change - allow to keep writing
+    }
 }
 
 static bool try_single_request(Connected *connected) {
@@ -170,12 +214,12 @@ static bool try_single_request(Connected *connected) {
     const uint8_t *request = &connected->incoming[4];
 
     // echo client message (for now)
+    // so just take the data from ::incoming and put in ::outgoing
     append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
     append_buffer(connected->outgoing, request, len);
     // consume message from connected::incoming to clear the buffer
     consume_buffer(connected->incoming, 4 + len);
-    return true;
-
+    return true; // successfully parsed a complete message - (bool) let the caller know
 }
 
 int main(){
