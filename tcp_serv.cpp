@@ -141,6 +141,41 @@ static void nb_read(Connected *connected) {
     }
     // append_buffer()
     append_buffer(connected->incoming, rbuf, (size_t)rv);
+    // check if the data in the buffer makes a complete request
+    try_single_request(connected);
+}
+
+static bool try_single_request(Connected *connected) {
+    // try to parse the accumulated buffer
+    // process the parsed message
+    // remove the message from incoming bufffer
+
+    // check that the data suffices a header at least
+    if (connected->incoming.size() < 4) {
+        return false;   // wants to read again in next iteration
+    }
+
+    uint32_t len = 0;
+    memcpy(&len, connected->incoming.data(), 4);
+    if (len > k_max_msg) {
+        perror("Incoming data exceeds request limit.");
+        connected->want_close = true;   // want to close 
+        return false; 
+    }
+
+    if ((4 + len) > connected->incoming.size()) {
+        return false;   // the message is clearly not complete, read again next iteration
+    }
+
+    const uint8_t *request = &connected->incoming[4];
+
+    // echo client message (for now)
+    append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
+    append_buffer(connected->outgoing, request, len);
+    // consume message from connected::incoming to clear the buffer
+    consume_buffer(connected->incoming, 4 + len);
+    return true;
+
 }
 
 int main(){
