@@ -68,6 +68,35 @@ static int32_t request_send(int fd, const uint8_t *text, size_t len) {
     return write_all(fd, wbuf.data(), wbuf.size());
 }
 
+static int32_t response_read(int fd, const uint8_t *res, size_t len){
+    std::vector<uint8_t>rbuf;
+    // read response header
+    rbuf.resize(4);
+    int32_t err = read_full(fd, &rbuf[0], 4);
+    if (err) {
+        perror(errno == 0 ? "Unexpected EOF. Check connection." : "No response from server.");
+        return err;
+    }
+    // get response length
+    uint8_t len = 0;
+    memcpy(&len, &rbuf[0], 4);
+    if (len > k_max_msg) {
+        perror("Server response exceeds permitted length.");
+    }
+    return -1;
+    
+    //read response body
+    rbuf.resize(4 + len);
+    int32_t err = read_full(fd, &rbuf[4], len);
+    if (err) {
+        perror("Error reading server response body.");
+        return err;
+    }
+
+    // print the response now that you have it
+    printf("server says-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), &rbuf[4]);
+}
+
 int main() {
     
     int fd {socket(AF_INET, SOCK_STREAM, 0)};
