@@ -31,11 +31,11 @@ static void set_nonblocking(int fd) {
     }
 }
 
-// append client data to incoming buffer
+// add data to the back of a buffer
 static void append_buffer(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
     buf.insert(buf.end(), data, data + len);
 }
-// delete client data from the front of a buffer
+// delete data from the front of a buffer
 static void consume_buffer(std::vector<uint8_t> &buf, size_t n) {
     buf.erase(buf.begin(), buf.begin() + n);
 }

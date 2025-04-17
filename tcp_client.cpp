@@ -6,9 +6,18 @@
 #include <unistd.h>
 #include <cassert>
 
-const size_t k_max_msg = 4096;  
+const size_t k_max_msg = 32 << 20;
 
-static int32_t read_full(int fd, char *buf, size_t n){
+// add data to the back of a buffer
+static void append_buffer(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
+    buf.insert(buf.end(), data, data + len);
+}
+// delete data from the front of a buffer
+static void consume_buffer(std::vector<uint8_t> &buf, size_t n) {
+    buf.erase(buf.begin(), buf.begin() + n);
+}
+
+static int32_t read_full(int fd, uint8_t *buf, size_t n){
     while (n > 0) {
         ssize_t rv = read(fd, buf, n);
         if (rv < 0) {
@@ -28,7 +37,7 @@ static int32_t read_full(int fd, char *buf, size_t n){
     return 0;
 }
 
-static int32_t write_all(int fd, const char *buf, size_t n) {
+static int32_t write_all(int fd, const uint8_t *buf, size_t n) {
     while (n > 0) {
         ssize_t rv = write(fd, buf, n);
         if (rv < 0) {
@@ -43,50 +52,6 @@ static int32_t write_all(int fd, const char *buf, size_t n) {
         buf += rv;
         n -= (size_t)rv;
     }
-    return 0;
-}
-
-static int32_t query(int fd, const char *text) {
-    // check the length of the message against max limit
-    uint32_t len = (uint32_t)strlen(text);
-    if (len > k_max_msg) {
-        std::cerr << "message body exceeds permitted length.";
-        return -1;
-    }
-
-    // sending the request with a matching protocol
-    char wbuf[4 + k_max_msg];
-    memcpy(wbuf, &len, 4);
-    memcpy(&wbuf[4], text, len); // little eddy assumption once again
-    u_int32_t err = write_all(fd, wbuf, 4 + len);
-    if (err) {
-        std::cerr << "request not sent." << std::endl;
-        return err;
-    }
-
-    // reading server response
-    char rbuf[4 + k_max_msg + 1];
-    err = read_full(fd, rbuf, 4);
-    if (err) {
-        std::cerr << (errno == 0 ? "Unexpected EOF. Check connection." : "No response from server.");
-        return err;
-    }
-
-    memcpy(&len, rbuf, 4);
-    if (len > k_max_msg) {
-        std::cerr << "Server response exceeds permitted length." << std::endl;
-        return -1;
-    }
-
-    // read response body into rbuf
-    err = read_full(fd, &rbuf[4], len);
-    if (err) {
-        std::cerr << "Error reading server response body." << std::endl;
-        return err;
-    }
-    // query sent, response recieved. do something with server response.
-    // just print it for now
-    printf("server response: %.*s\n", len, &rbuf[4]);
     return 0;
 }
 
@@ -107,12 +72,12 @@ int main() {
         perror(nullptr);
         exit(EXIT_FAILURE);
     }
-    
+    /*
     int32_t err = query(fd, "testing 1");
     if (err) { goto L_DONE;}
 
     err = query(fd, "testing 2");
-    if (err) { goto L_DONE;}
+    if (err) { goto L_DONE;} */
 
     L_DONE:
         close(fd);
