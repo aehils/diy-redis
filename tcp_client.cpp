@@ -55,6 +55,19 @@ static int32_t write_all(int fd, const uint8_t *buf, size_t n) {
     return 0;
 }
 
+static int32_t request_send(int fd, const uint8_t *text, size_t len) {
+    // check the length of the message against max limit
+    if (len > k_max_msg) {
+        perror("request exceeds permitted length.");
+        return -1;
+    }
+    // creat write buffer, fill it with request body and write to socket
+    std::vector<uint8_t>wbuf;
+    append_buffer(wbuf, (const uint8_t *)&len, 4);
+    append_buffer(wbuf, text, len);
+    return write_all(fd, wbuf.data(), wbuf.size());
+}
+
 int main() {
     
     int fd {socket(AF_INET, SOCK_STREAM, 0)};
