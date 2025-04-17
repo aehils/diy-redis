@@ -26,7 +26,7 @@ static void set_nonblocking(int fd) {
     // set flag
     errno = 0;
     if (fcntl(fd, F_SETFL, flags) == -1) {
-        perror("fcntl(F_SETFL failed.");
+        perror("fcntl(F_SETFL) failed.");
         exit(EXIT_FAILURE);
     }
 }
@@ -144,7 +144,7 @@ static void nb_read(Connected *connected) {
     // put everything read from rbuf into ::incoming for this connection
     append_buffer(connected->incoming, rbuf, (size_t)rv);
     // check if the data in the buffer makes a complete request
-    try_single_request(connected);
+    while (try_single_request(connected)) {}
 
     // if the program has response for this connection, change flag to write
     if (connected->outgoing.size() > 0) {   
@@ -215,7 +215,10 @@ static bool try_single_request(Connected *connected) {
 
     const uint8_t *request = &connected->incoming[4];
 
-    // echo client message (for now)
+    // request parsed, print it for your own sake
+    printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
+
+    // echo client message (for now) from the server
     // so just take the data from ::incoming and put in ::outgoing
     append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
     append_buffer(connected->outgoing, request, len);
