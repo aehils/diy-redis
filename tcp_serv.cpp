@@ -16,7 +16,7 @@ static void set_nonblocking(int fd) {
     errno = 0;
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
-        perror("fcntl(F_GETFL) failed.");
+        perror("fcntl(F_GETFL) failed");
         exit(EXIT_FAILURE);
     }
 
@@ -26,7 +26,7 @@ static void set_nonblocking(int fd) {
     // set flag
     errno = 0;
     if (fcntl(fd, F_SETFL, flags) == -1) {
-        perror("fcntl(F_SETFL) failed.");
+        perror("fcntl(F_SETFL) failed");
         exit(EXIT_FAILURE);
     }
 }
@@ -111,6 +111,42 @@ static Connected *connection_accept(int fd) {
     return connected;
 }
 
+static bool try_single_request(Connected *connected) {
+    /* try to parse the accumulated buffer
+        process the parsed message
+        remove the message from incoming buffer  */
+
+    // check that the data suffices a header at least
+    if (connected->incoming.size() < 4) {
+        return false;   // wants to read again in next iteration
+    }
+
+    uint32_t len = 0;
+    memcpy(&len, connected->incoming.data(), 4);
+    if (len > k_max_msg) {
+        perror("Incoming data exceeds request limit");
+        connected->want_close = true;   // want to close 
+        return false; 
+    }
+
+    if ((4 + len) > connected->incoming.size()) {
+        return false;   // the message is clearly not complete, read again next iteration
+    }
+
+    const uint8_t *request = &connected->incoming[4];
+
+    // request parsed, print it for your own sake
+    printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
+
+    // echo client message (for now) from the server
+    // so just take the data from ::incoming and put in ::outgoing
+    append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
+    append_buffer(connected->outgoing, request, len);
+    // consume message from connected::incoming to clear the buffer
+    consume_buffer(connected->incoming, 4 + len);
+    return true; // successfully parsed a complete message - (bool) let the caller know
+}
+
 static void nb_read(Connected *connected) {
     // do a single non-blocking read
     uint8_t rbuf[64 *1024];
@@ -132,8 +168,7 @@ static void nb_read(Connected *connected) {
     }
     if (rv == 0){
         if (connected->incoming.empty()){
-            perror("CLOSE: client not connected");
-            connected->want_close = true;
+            connected->want_close = true; // close cleanly
             return;
         } else {
             perror("CLOSE: unexpected EOF");
@@ -191,42 +226,6 @@ static void nb_write(Connected *connected) {
     }
 }
 
-static bool try_single_request(Connected *connected) {
-    /* try to parse the accumulated buffer
-        process the parsed message
-        remove the message from incoming buffer  */
-
-    // check that the data suffices a header at least
-    if (connected->incoming.size() < 4) {
-        return false;   // wants to read again in next iteration
-    }
-
-    uint32_t len = 0;
-    memcpy(&len, connected->incoming.data(), 4);
-    if (len > k_max_msg) {
-        perror("Incoming data exceeds request limit.");
-        connected->want_close = true;   // want to close 
-        return false; 
-    }
-
-    if ((4 + len) > connected->incoming.size()) {
-        return false;   // the message is clearly not complete, read again next iteration
-    }
-
-    const uint8_t *request = &connected->incoming[4];
-
-    // request parsed, print it for your own sake
-    printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
-
-    // echo client message (for now) from the server
-    // so just take the data from ::incoming and put in ::outgoing
-    append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
-    append_buffer(connected->outgoing, request, len);
-    // consume message from connected::incoming to clear the buffer
-    consume_buffer(connected->incoming, 4 + len);
-    return true; // successfully parsed a complete message - (bool) let the caller know
-}
-
 int main() {
 
     // listening socket fd
@@ -272,6 +271,7 @@ int main() {
 
         // all the connection sockets into notifiers
         for (Connected *connected : fd_conn_map) {
+            if (!connected) {continue;}     // skip NULL connections
             struct pollfd client {connected->fd, POLLERR, 0}; // default check for error
 
             //check for io intent
@@ -312,18 +312,18 @@ int main() {
             uint32_t ready = socketNotifiers[i].revents;
 
             Connected *connected = fd_conn_map[socketNotifiers[i].fd];
-            if (ready && POLLIN) {
+            if (ready & POLLIN) {
                 assert(connected->want_read == true);
                 nb_read(connected);
             }
-            if (ready && POLLOUT) {
+            if (ready & POLLOUT) {
                 assert(connected->want_write == true);
                 nb_write(connected);
             }
-            if ((ready && POLLERR) || connected->want_close) {
+            if ((ready & POLLERR) || connected->want_close) {
                 // error, close the connection
-                perror("CLOSED CLIENT CONNECTION");
-                (void)close(fd);
+                std::cout << "CLOSED CLIENT CONNECTION" << std::endl;
+                (void)close(connected->fd);
                 fd_conn_map[connected->fd] = NULL;
                 delete connected;
             }

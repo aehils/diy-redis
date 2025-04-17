@@ -58,7 +58,7 @@ static int32_t write_all(int fd, const uint8_t *buf, size_t n) {
 static int32_t request_send(int fd, const uint8_t *text, size_t len) {
     // check the length of the message against max limit
     if (len > k_max_msg) {
-        perror("request exceeds permitted length.");
+        perror("request exceeds permitted length");
         return -1;
     }
     // creat write buffer, fill it with request body and write to socket
@@ -74,27 +74,28 @@ static int32_t response_read(int fd){
     rbuf.resize(4);
     int32_t err = read_full(fd, &rbuf[0], 4);
     if (err) {
-        perror(errno == 0 ? "Unexpected EOF. Check connection." : "No response from server.");
+        perror(errno == 0 ? "Unexpected EOF. Check connection" : "No response from server");
         return err;
     }
     // get response length
-    uint8_t len = 0;
+    uint32_t len = 0;
     memcpy(&len, &rbuf[0], 4);
     if (len > k_max_msg) {
-        perror("Server response exceeds permitted length.");
+        perror("Server response exceeds permitted length");
+        return -1;
     }
-    return -1;
     
     //read response body
     rbuf.resize(4 + len);
-    int32_t err = read_full(fd, &rbuf[4], len);
+    err = read_full(fd, &rbuf[4], len);
     if (err) {
-        perror("Error reading server response body.");
+        perror("Error reading server response body");
         return err;
     }
 
     // print the response now that you have it
     printf("server says-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), &rbuf[4]);
+    return 0;
 }
 
 int main() {
@@ -125,7 +126,7 @@ int main() {
         }
     }
     // take a batch of responses
-    for (size_t i; i < queries.size(); i++) {
+    for (size_t i = 0; i < queries.size(); i++) {
         int32_t err = response_read(fd);
         if (err) {
             perror("server response not read");
