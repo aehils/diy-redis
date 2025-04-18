@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <cassert>
 
-const size_t k_max_msg = 32 << 20;
+const size_t max_msg = 32 << 20;
 
 // add data to the back of a buffer
 static void append_buffer(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
@@ -57,7 +57,7 @@ static int32_t write_all(int fd, const uint8_t *buf, size_t n) {
 
 static int32_t request_send(int fd, const uint8_t *text, size_t len) {
     // check the length of the message against max limit
-    if (len > k_max_msg) {
+    if (len > max_msg) {
         perror("request exceeds permitted length");
         return -1;
     }
@@ -80,7 +80,7 @@ static int32_t response_read(int fd){
     // get response length
     uint32_t len = 0;
     memcpy(&len, &rbuf[0], 4);
-    if (len > k_max_msg) {
+    if (len > max_msg) {
         perror("Server response exceeds permitted length");
         return -1;
     }
@@ -119,7 +119,7 @@ int main() {
     // send batch of requests
     std::vector<std::string> queries = { 
         "hello1", "hello2", "hello3",
-        std::string(k_max_msg, 'z'),
+        std::string(max_msg, 'z'),
         "hello5"
 
     };
