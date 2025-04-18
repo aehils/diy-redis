@@ -31,7 +31,7 @@ static int32_t read_full(int fd, uint8_t *buf, size_t n){
         }
 
         assert((size_t)rv <= n);
-        buf += n;
+        buf += rv;
         n -= (size_t)rv;
         }
     return 0;
@@ -117,7 +117,12 @@ int main() {
     }
 
     // send batch of requests
-    std::vector<std::string> queries = { "hello1", "hello2", "hello3"};
+    std::vector<std::string> queries = { 
+        "hello1", "hello2", "hello3",
+        std::string(k_max_msg, 'z'),
+        "hello5"
+
+    };
     for (const std::string &s : queries) {
         int32_t err = request_send(fd, (uint8_t *)s.data(), s.size());
         if (err) {

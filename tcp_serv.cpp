@@ -9,7 +9,7 @@
 #include <sys/fcntl.h>
 
 
-const size_t k_max_msg = 4096;  
+const size_t k_max_msg = 32 << 20;  
 
 static void set_nonblocking(int fd) {
     // get current file status flags
@@ -56,7 +56,7 @@ static int32_t read_full(int fd, char *buf, size_t n){
         }
 
         assert((size_t)rv <= n);
-        buf += n;
+        buf += rv;
         n -= (size_t)rv;
         }
     return 0;
