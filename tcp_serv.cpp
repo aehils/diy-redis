@@ -9,7 +9,8 @@
 #include <sys/fcntl.h>
 
 
-const size_t k_max_msg = 32 << 20;  
+const size_t max_msg = 32 << 20;
+const size_t max_args = 200 * 1000;
 
 static void set_nonblocking(int fd) {
     // get current file status flags
@@ -123,7 +124,7 @@ static bool try_single_request(Connected *connected) {
 
     uint32_t len = 0;
     memcpy(&len, connected->incoming.data(), 4);
-    if (len > k_max_msg) {
+    if (len > max_msg) {
         perror("Incoming data exceeds request limit");
         connected->want_close = true;   // want to close 
         return false; 
@@ -134,14 +135,18 @@ static bool try_single_request(Connected *connected) {
     }
 
     const uint8_t *request = &connected->incoming[4];
+    // (kv-server) - *request points to the beginning of the cmd payload
+                    //  outer byte size header is stripped bcus atp, its a valid msg. 
+                    // the logic you do now is INSIDE that msg, relevant to the redis
+    
 
+    /*
     // request parsed, print it for your own sake
     printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
+    */
 
-    // echo client message (for now) from the server
-    // so just take the data from ::incoming and put in ::outgoing
-    append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
-    append_buffer(connected->outgoing, request, len);
+    // request_parse() !!!
+    // (parse_req(request, len, cmd)
     // consume message from connected::incoming to clear the buffer
     consume_buffer(connected->incoming, 4 + len);
     return true; // successfully parsed a complete message - (bool) let the caller know
