@@ -2,4 +2,3 @@
 
 Documentation in progress...
 
-Please refer to latest architecure in `event-loop-refactor` branch
