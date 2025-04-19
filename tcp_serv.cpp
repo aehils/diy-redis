@@ -93,6 +93,7 @@ struct Connected {
     std::vector<uint8_t> outgoing;  // response data from the app, to be sent
     };
 
+
 static Connected *connection_accept(int fd) {
     // create stuct to store address info
     struct sockaddr_in client_addr = {};
@@ -111,11 +112,62 @@ static Connected *connection_accept(int fd) {
 
     return connected;
 }
+static bool u32read(const uint8_t *&pos, const uint8_t *end, uint32_t &out){
+    if ((pos + 4) < end) {
+        perror("cannot read size");
+        return false;
+    }
+    memcpy(&out, pos, 4);
+    pos += 4;
+    return true;
+}
+
+static bool stringRead(const uint8_t *&pos, const uint8_t *end, size_t n, std::string &out){
+    if ((pos + n) > end){
+        perror("cannot read string");
+        return false;
+    }
+    out.assign(pos, pos + n);
+    pos += n;
+    return true;
+}
+
+static int32_t requestParse(const uint8_t *data, size_t size, std::vector<std::string> &out){
+    const uint8_t *end = data + size;
+    uint32_t nstr = 0;
+    if (!u32read(data, end, nstr)) {
+        perror("nstr()");
+        return -1;
+    }
+    if (nstr > max_args) {
+        perror("request exceeds max args");
+        return -1;
+    }
+    // loop the string args in the cmd
+    while (out.size() < nstr) {
+        uint32_t len = 0;
+        if (!u32read(data, end, len)){
+            perror("string byte length");
+            return -1;
+        }
+        // add empty string to out
+        out.push_back(std::string());
+        // populate empty string with byte read
+        if (!stringRead(data, end, len, out.back())) {
+            return -1;
+        }
+    }
+    if (data != end) {
+        perror("malformed request - trailing bytes in buffer");
+        return -1;  // trialing garbage
+    }
+    return 0;
+}
 
 static bool try_single_request(Connected *connected) {
-    /* try to parse the accumulated buffer
-        process the parsed message
-        remove the message from incoming buffer  */
+    /*  1. try to parse the accumulated buffer
+        2. process the parsed message
+        3. remove the message from incoming buffer  */
 
     // check that the data suffices a header at least
     if (connected->incoming.size() < 4) {
@@ -135,18 +187,26 @@ static bool try_single_request(Connected *connected) {
     }
 
     const uint8_t *request = &connected->incoming[4];
-    // (kv-server) - *request points to the beginning of the cmd payload
+    // (kv-server) - *request points to (what will be) the beginning of the cmd payload
                     //  outer byte size header is stripped bcus atp, its a valid msg. 
                     // the logic you do now is INSIDE that msg, relevant to the redis
     
 
     /*
-    // request parsed, print it for your own sake
+    request parsed, print it for your own sake
     printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
     */
 
     // request_parse() !!!
-    // (parse_req(request, len, cmd)
+    // Response struct
+    // do_request()
+    // make_response()
+    // parse_req(request, len, cmd)
+    /*
+    Response resp;
+    do_request(cmd, resp);
+    make_response(resp, conn->outgoing);
+        */
     // consume message from connected::incoming to clear the buffer
     consume_buffer(connected->incoming, 4 + len);
     return true; // successfully parsed a complete message - (bool) let the caller know
