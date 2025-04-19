@@ -93,6 +93,10 @@ struct Connected {
     std::vector<uint8_t> outgoing;  // response data from the app, to be sent
     };
 
+struct Response {
+    uint8_t status = 0;
+    std::vector<uint8_t>data;
+};
 
 static Connected *connection_accept(int fd) {
     // create stuct to store address info
