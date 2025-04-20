@@ -199,6 +199,13 @@ static void do_request(std::vector<std::string> &cmd, Response &out) {
     }
 }
 
+static void respond(const Response &response, std::vector<uint8_t> &out) {
+    uint32_t responselength = 4 + (uint32_t)response.data.size();
+    append_buffer(out, (const uint8_t *)&responselength, 4);    // header - entire msg length prefix
+    append_buffer(out, (const uint8_t *)&response.status, 4);   // status code
+    append_buffer(out, response.data.data(), response.data.size());     // payload
+}
+
 static bool try_single_request(Connected *connected) {
     /*  1. try to parse the accumulated buffer
         2. process the parsed message
@@ -223,18 +230,12 @@ static bool try_single_request(Connected *connected) {
 
     const uint8_t *request = &connected->incoming[4];
     // (kv-server) - *request points to (what will be) the beginning of the cmd payload
-                    //  outer byte size header is stripped bcus atp, its a valid msg. 
+                    //  outer byte size header has been stripped bcuz atp, its a valid msg. 
                     // the logic you do now is INSIDE that msg, relevant to the redis
-    
-
     /*
     request parsed, print it for your own sake
     printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
     */
-
-    // request_parse() !!!
-    // Response struct
-    // do_request()
     // make_response()
     /*
     Response resp;
