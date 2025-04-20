@@ -7,6 +7,7 @@
 #include <cassert>
 #include <poll.h>
 #include <sys/fcntl.h>
+#include <map>
 
 
 const size_t max_msg = 32 << 20;
@@ -168,6 +169,8 @@ static int32_t requestParse(const uint8_t *data, size_t size, std::vector<std::s
     return 0;
 }
 
+static std::map<std::string, std::string>archive;
+
 static bool try_single_request(Connected *connected) {
     /*  1. try to parse the accumulated buffer
         2. process the parsed message
@@ -205,7 +208,6 @@ static bool try_single_request(Connected *connected) {
     // Response struct
     // do_request()
     // make_response()
-    // parse_req(request, len, cmd)
     /*
     Response resp;
     do_request(cmd, resp);
