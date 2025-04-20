@@ -99,6 +99,12 @@ struct Response {
     std::vector<uint8_t>data;
 };
 
+enum {
+    RES_OK = 0,
+    RES_ERR = 1,
+    RES_NO = 2,
+};
+
 static Connected *connection_accept(int fd) {
     // create stuct to store address info
     struct sockaddr_in client_addr = {};
