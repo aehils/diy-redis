@@ -177,6 +177,28 @@ static int32_t requestParse(const uint8_t *data, size_t size, std::vector<std::s
 
 static std::map<std::string, std::string>archive;
 
+static void do_request(std::vector<std::string> &cmd, Response &out) {
+    if ((cmd.size() == 2) && cmd[0] == "get") {
+        auto it = archive.find(cmd[1]);
+        if (it != archive.end()) {
+            const std::string &val = it->second;
+            out.data.assign(val.begin(), val.end());
+        } else {
+            out.status = RES_NO;
+            return;
+        }
+    }
+    else if ((cmd.size() == 3) && cmd[0] == "set") {
+        archive[cmd[1]].swap(cmd[2]);
+    }
+    else if ((cmd.size() == 2) && cmd[0] == "del") {
+        archive.erase(cmd[1]);
+    }
+    else {
+        out.status = RES_ERR;   // command was not recognised, error status
+    }
+}
+
 static bool try_single_request(Connected *connected) {
     /*  1. try to parse the accumulated buffer
         2. process the parsed message
