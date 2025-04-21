@@ -232,16 +232,16 @@ static bool try_single_request(Connected *connected) {
     // (kv-server) - *request points to (what will be) the beginning of the cmd payload
                     //  outer byte size header has been stripped bcuz atp, its a valid msg. 
                     // the logic you do now is INSIDE that msg, relevant to the redis
-    /*
-    request parsed, print it for your own sake
-    printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
-    */
-    // make_response()
-    /*
-    Response resp;
-    do_request(cmd, resp);
-    make_response(resp, conn->outgoing);
-        */
+    std::vector<std::string> cmd;
+    if (requestParse(request, len, cmd) < 0) {
+        perror("cannot parse client request");
+        connected->want_close = true;
+        return false;
+    }
+    
+    Response srv_resp;
+    do_request(cmd, srv_resp);
+    respond(srv_resp, connected->outgoing);
     // consume message from connected::incoming to clear the buffer
     consume_buffer(connected->incoming, 4 + len);
     return true; // successfully parsed a complete message - (bool) let the caller know
