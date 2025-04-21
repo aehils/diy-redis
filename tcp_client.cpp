@@ -55,17 +55,29 @@ static int32_t write_all(int fd, const uint8_t *buf, size_t n) {
     return 0;
 }
 
-static int32_t request_send(int fd, const uint8_t *text, size_t len) {
-    // check the length of the message against max limit
+static int32_t request_send(int fd, const std::vector<std::string> &cmd) {
+    uint32_t len = 4;   // 4 bytes reserved for nstr
+    for (const std::string &s : cmd) {
+        len += 4 + s.size();
+    }   // for each string in cmd, add 4 bytes to encode the str size
     if (len > max_msg) {
         perror("request exceeds permitted length");
         return -1;
+    }   // len carries the entire payload size (excluding msg length prefix)
+
+    uint8_t wbuf[4 + max_msg];
+    memcpy(&wbuf[0], &len, 4);  // length prefix
+    uint32_t nstr = cmd.size();
+    memcpy(&wbuf[4], &nstr, 4); // number of strings
+
+    size_t pos = 8;     // next available idx in wbuf
+    for (const std::string &s : cmd) {
+        uint32_t arglen = (uint32_t)s.size();
+        memcpy(&wbuf[pos], &arglen, sizeof(arglen));
+        memcpy(&wbuf[pos + sizeof(arglen)], s.data(), arglen);
+        pos += sizeof(arglen) + arglen;
     }
-    // creat write buffer, fill it with request body and write to socket
-    std::vector<uint8_t>wbuf;
-    append_buffer(wbuf, (const uint8_t *)&len, 4);
-    append_buffer(wbuf, text, len);
-    return write_all(fd, wbuf.data(), wbuf.size());
+    return write_all(fd, wbuf, sizeof(wbuf));
 }
 
 static int32_t response_read(int fd){
@@ -123,13 +135,13 @@ int main() {
         "hello5"
 
     };
-    for (const std::string &s : queries) {
+    /* for (const std::string &s : queries) {
         int32_t err = request_send(fd, (uint8_t *)s.data(), s.size());
         if (err) {
             perror("request not sent to server");
             goto L_DONE;
         }
-    }
+    } */
     // take a batch of responses
     for (size_t i = 0; i < queries.size(); i++) {
         int32_t err = response_read(fd);
