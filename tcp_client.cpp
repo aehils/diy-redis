@@ -116,7 +116,7 @@ static int32_t response_read(int fd) {
     return 0;
 }
 
-int main() {
+int main(int argc, char **argv) {
     
     int fd {socket(AF_INET, SOCK_STREAM, 0)};
     int reuseBool {1};
@@ -134,32 +134,22 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // send batch of requests
-    std::vector<std::string> queries = { 
-        "hello1", "hello2", "hello3",
-        std::string(max_msg, 'z'),
-        "hello5"
-
-    };
-    /* for (const std::string &s : queries) {
-        int32_t err = request_send(fd, (uint8_t *)s.data(), s.size());
-        if (err) {
-            perror("request not sent to server");
-            goto L_DONE;
-        }
-    } */
-    // take a batch of responses
-    for (size_t i = 0; i < queries.size(); i++) {
-        int32_t err = response_read(fd);
-        if (err) {
-            perror("server response not read");
-            goto L_DONE;
-        }
+    std::vector<std::string> cmd;
+    for (int i = 1; i < argc; ++i) {
+        cmd.push_back(argv[i]);
     }
+
+    int32_t err = request_send(fd, cmd);
+    if (err) {
+        goto L_DONE;
+    }
+    err = response_read(fd);
+    if (err) {
+        goto L_DONE;
+    }
+
 
     L_DONE:
         close(fd);
         return 0;
-
-    return 0;
 }
