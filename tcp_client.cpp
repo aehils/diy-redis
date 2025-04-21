@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <cassert>
 
-const size_t max_msg = 32 << 20;
+const size_t max_msg = 4 * 1024;
 
 // add data to the back of a buffer
 static void append_buffer(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
@@ -77,7 +77,7 @@ static int32_t request_send(int fd, const std::vector<std::string> &cmd) {
         memcpy(&wbuf[pos + sizeof(arglen)], s.data(), arglen);
         pos += sizeof(arglen) + arglen;
     }
-    return write_all(fd, wbuf, sizeof(wbuf));
+    return write_all(fd, wbuf, 4 + len);
 }
 
 static int32_t response_read(int fd) {
@@ -86,7 +86,7 @@ static int32_t response_read(int fd) {
     int32_t err = read_full(fd, rbuf, 4);   // read length prefix
     if (err) {
         if (errno == 0) {
-            printf("EOF");
+            printf("EOF\n");
         } else {
             perror("response not received from server"); }
         return err;

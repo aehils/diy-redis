@@ -124,7 +124,7 @@ static Connected *connection_accept(int fd) {
     return connected;
 }
 static bool u32read(const uint8_t *&pos, const uint8_t *end, uint32_t &out){
-    if ((pos + 4) < end) {
+    if ((pos + 4) > end) {
         perror("cannot read size");
         return false;
     }
@@ -238,7 +238,7 @@ static bool try_single_request(Connected *connected) {
         connected->want_close = true;
         return false;
     }
-    
+
     Response srv_resp;
     do_request(cmd, srv_resp);
     respond(srv_resp, connected->outgoing);
