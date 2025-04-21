@@ -80,33 +80,39 @@ static int32_t request_send(int fd, const std::vector<std::string> &cmd) {
     return write_all(fd, wbuf, sizeof(wbuf));
 }
 
-static int32_t response_read(int fd){
-    std::vector<uint8_t>rbuf;
-    // read response header
-    rbuf.resize(4);
-    int32_t err = read_full(fd, &rbuf[0], 4);
+static int32_t response_read(int fd) {
+    errno = 0;
+    uint8_t rbuf[4 + max_msg + 1];
+    int32_t err = read_full(fd, rbuf, 4);   // read length prefix
     if (err) {
-        perror(errno == 0 ? "Unexpected EOF. Check connection" : "No response from server");
-        return err;
-    }
-    // get response length
-    uint32_t len = 0;
-    memcpy(&len, &rbuf[0], 4);
-    if (len > max_msg) {
-        perror("Server response exceeds permitted length");
-        return -1;
-    }
-    
-    //read response body
-    rbuf.resize(4 + len);
-    err = read_full(fd, &rbuf[4], len);
-    if (err) {
-        perror("Error reading server response body");
+        if (errno == 0) {
+            printf("EOF");
+        } else {
+            perror("response not received from server"); }
         return err;
     }
 
-    // print the response now that you have it
-    printf("server says-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), &rbuf[4]);
+    uint32_t len = 0;
+    memcpy(&len, rbuf, 4);
+    if (len > max_msg) {
+        perror("server response exceeds permitted length");
+        return -1;
+    }   // evaluating length prefix
+
+    // payload
+    err = read_full(fd, &rbuf[4], len);
+    if (err) {
+        perror("cannot read server response payload");
+        return err;
+    }
+    // print result
+    uint32_t statuscode = 0;
+    if (len < 4) {
+        perror("malformed response read from server");
+        return -1;
+    }
+    memcpy(&statuscode, &rbuf[4], 4); // acquire status code
+    printf("server says: [%u] %.*s\n", statuscode, len - 4, &rbuf[8]);
     return 0;
 }
 
