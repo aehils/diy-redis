@@ -111,6 +111,7 @@ static Connected *connection_accept(int fd) {
     socklen_t addrlen = sizeof(client_addr);
     // accept
     int connfd = accept(fd, (sockaddr *)&client_addr, &addrlen);
+    printf("client connection accepted\n");
     if (connfd < 0) {
         return NULL;
     }
@@ -330,6 +331,7 @@ int main() {
 
     // listening socket fd
     int fd = socket(AF_INET, SOCK_STREAM, 0);
+    printf("\nintialising socket...\n");
 
     // allow the socket to reuse its address
     int val = 1;
@@ -342,6 +344,7 @@ int main() {
     addr.sin_addr.s_addr = htonl(0); //wildcard 0.0.0.0 - htonl() converts addr to net long
 
     int rv  = bind(fd, (const struct sockaddr *)&addr, sizeof(addr));
+    printf("binding address...\n");
     if (rv) {
         std::cerr << "bind() failed: ";
         perror(nullptr); // This will print the error message corresponding to errno
@@ -350,6 +353,7 @@ int main() {
 
     // listen for incoming connections
     rv = listen(fd, SOMAXCONN);
+    printf("listening...\n");
     if (rv) {
         std::cerr << "listen() failed: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
@@ -364,6 +368,7 @@ int main() {
     // event loop
     std::vector<pollfd> socketNotifiers; // list of socket notifiers
     while (true) {
+
         socketNotifiers.clear();
         // listening socket first into notifiers
         struct pollfd askListen = {fd, POLLIN, 0};
@@ -387,6 +392,7 @@ int main() {
             }
             if (rv < 0) {
                 std::cerr << "poll() failure" << std::endl;
+                return -1;
             }
 
         /* if program is here, then at least one of the sockets is ready, its notifier active */
