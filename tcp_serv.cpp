@@ -239,7 +239,7 @@ static bool try_single_request(Connected *connected) {
         connected->want_close = true;
         return false;
     }
-    // check for close command
+    // check for close command (?)
     if ((cmd.size() == 1) && cmd[0] == "close") {
         connected->want_close = true;
         return true;
@@ -272,17 +272,14 @@ static void nb_read(Connected *connected) {
             return;
         }
     }
+    // shutdown client read
     if (rv == 0){
-        /*
-        if (connected->incoming.empty()){
-            printf("request RECEIVED");
-            return;
+        if (connected->incoming.size() == 0) {
+            printf("client connection closed");
         } else {
-            perror("CLOSE: unexpected EOF");
-            connected->want_close = true; // EOF - ask to close connection
-            return;
-        }   
-        */
+            printf("unexpected client EOF");
+        }
+        connected->want_close = true;
         return;
     }
     // put everything read from rbuf into ::incoming for this connection
