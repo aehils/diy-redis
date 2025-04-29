@@ -134,20 +134,21 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    std::vector<std::string> cmd;
-    for (int i = 1; i < argc; ++i) {
-        cmd.push_back(argv[i]);
-    }
+    while (true) {
+        std::vector<std::string> cmd;
+        for (int i = 1; i < argc; ++i) {
+            cmd.push_back(argv[i]);
+        }
 
-    int32_t err = request_send(fd, cmd);
-    if (err) {
-        goto L_DONE;
+        int32_t err = request_send(fd, cmd);
+        if (err) {
+            goto L_DONE;
+        }
+        err = response_read(fd);
+        if (err) {
+            goto L_DONE;
+        }
     }
-    err = response_read(fd);
-    if (err) {
-        goto L_DONE;
-    }
-
 
     L_DONE:
         close(fd);
