@@ -274,9 +274,7 @@ static void nb_read(Connected *connected) {
     }
     // shutdown client read
     if (rv == 0){
-        if (connected->incoming.size() == 0) {
-            printf("client connection closed");
-        } else {
+        if (connected->incoming.size() != 0) {
             printf("unexpected client EOF");
         }
         connected->want_close = true;
@@ -361,7 +359,7 @@ int main() {
 
     // listen for incoming connections
     rv = listen(fd, SOMAXCONN);
-    printf("listening...\n");
+    printf("listening...\n\n");
     if (rv) {
         std::cerr << "listen() failed: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
@@ -435,7 +433,8 @@ int main() {
                 nb_write(connected);
             }
             if ((ready & POLLERR) || connected->want_close) {
-                // error, close the connection
+                // close the connection on error
+                // OR close on flag intent
                 std::cout << "CLOSED CLIENT CONNECTION" << std::endl;
                 (void)close(connected->fd);
                 fd_conn_map[connected->fd] = NULL;
