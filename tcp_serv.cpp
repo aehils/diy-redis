@@ -239,6 +239,11 @@ static bool try_single_request(Connected *connected) {
         connected->want_close = true;
         return false;
     }
+    // check for close command
+    if ((cmd.size() == 1) && cmd[0] == "close") {
+        connected->want_close = true;
+        return true;
+    }
 
     Response srv_resp;
     do_request(cmd, srv_resp);
@@ -268,19 +273,25 @@ static void nb_read(Connected *connected) {
         }
     }
     if (rv == 0){
+        /*
         if (connected->incoming.empty()){
-            connected->want_close = true; // close cleanly
+            printf("request RECEIVED");
             return;
         } else {
             perror("CLOSE: unexpected EOF");
             connected->want_close = true; // EOF - ask to close connection
             return;
-        }
+        }   
+        */
+        return;
     }
     // put everything read from rbuf into ::incoming for this connection
     append_buffer(connected->incoming, rbuf, (size_t)rv);
     // check if the data in the buffer makes a complete request
-    while (try_single_request(connected)) {}
+    while (try_single_request(connected)) {
+        printf("request RECEIVED\n");
+        fflush(stdout);
+    }
 
     // if the program has response for this connection, change flag to write
     if (connected->outgoing.size() > 0) {   
