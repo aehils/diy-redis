@@ -95,7 +95,7 @@ struct Connected {
     };
 
 struct Response {
-    uint8_t status = 0;
+    uint32_t status = 0;
     std::vector<uint8_t>data;
 };
 
@@ -204,7 +204,7 @@ static void respond(const Response &response, std::vector<uint8_t> &out) {
     uint32_t responselength = 4 + (uint32_t)response.data.size();
     append_buffer(out, (const uint8_t *)&responselength, 4);    // header - entire msg length prefix
     append_buffer(out, (const uint8_t *)&response.status, 4);   // status code
-    append_buffer(out, response.data.data(), response.data.size());     // payload
+    append_buffer(out, response.data.data(), response.data.size());    // payload
 }
 
 static bool try_single_request(Connected *connected) {
@@ -435,7 +435,7 @@ int main() {
             if ((ready & POLLERR) || connected->want_close) {
                 // close the connection on error
                 // OR close on flag intent
-                std::cout << "CLOSED CLIENT CONNECTION" << std::endl;
+                std::cout << "CLOSED CLIENT CONNECTION\n" << std::endl;
                 (void)close(connected->fd);
                 fd_conn_map[connected->fd] = NULL;
                 delete connected;
