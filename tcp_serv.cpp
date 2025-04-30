@@ -7,9 +7,11 @@
 #include <cassert>
 #include <poll.h>
 #include <sys/fcntl.h>
+#include <map>
 
 
-const size_t k_max_msg = 32 << 20;  
+const size_t max_msg = 32 << 20;
+const size_t max_args = 200 * 1000;
 
 static void set_nonblocking(int fd) {
     // get current file status flags
@@ -92,12 +94,24 @@ struct Connected {
     std::vector<uint8_t> outgoing;  // response data from the app, to be sent
     };
 
+struct Response {
+    uint32_t status = 0;
+    std::vector<uint8_t>data;
+};
+
+enum {
+    RES_OK = 0,
+    RES_ERR = 1,
+    RES_NO = 2,
+};
+
 static Connected *connection_accept(int fd) {
     // create stuct to store address info
     struct sockaddr_in client_addr = {};
     socklen_t addrlen = sizeof(client_addr);
     // accept
     int connfd = accept(fd, (sockaddr *)&client_addr, &addrlen);
+    printf("client connection accepted\n");
     if (connfd < 0) {
         return NULL;
     }
@@ -110,11 +124,93 @@ static Connected *connection_accept(int fd) {
 
     return connected;
 }
+static bool u32read(const uint8_t *&pos, const uint8_t *end, uint32_t &out){
+    if ((pos + 4) > end) {
+        perror("cannot read size");
+        return false;
+    }
+    memcpy(&out, pos, 4);
+    pos += 4;
+    return true;
+}
+
+static bool stringRead(const uint8_t *&pos, const uint8_t *end, size_t n, std::string &out){
+    if ((pos + n) > end){
+        perror("cannot read string");
+        return false;
+    }
+    out.assign(pos, pos + n);
+    pos += n;
+    return true;
+}
+
+static int32_t requestParse(const uint8_t *data, size_t size, std::vector<std::string> &out){
+    const uint8_t *end = data + size;
+    uint32_t nstr = 0;
+    if (!u32read(data, end, nstr)) {
+        perror("nstr()");
+        return -1;
+    }
+    if (nstr > max_args) {
+        perror("request exceeds max args");
+        return -1;
+    }
+    // loop the string args in the cmd
+    while (out.size() < nstr) {
+        uint32_t len = 0;
+        if (!u32read(data, end, len)){
+            perror("string byte length");
+            return -1;
+        }
+        // add empty string to out
+        out.push_back(std::string());
+        // populate empty string with byte read
+        if (!stringRead(data, end, len, out.back())) {
+            return -1;
+        }
+    }
+    if (data != end) {
+        perror("malformed request - trailing bytes in buffer");
+        return -1;  // trialing garbage
+    }
+    return 0;
+}
+
+static std::map<std::string, std::string>archive;
+
+static void do_request(std::vector<std::string> &cmd, Response &out) {
+    if ((cmd.size() == 2) && cmd[0] == "get") {
+        auto it = archive.find(cmd[1]);
+        if (it != archive.end()) {
+            const std::string &val = it->second;
+            out.data.assign(val.begin(), val.end());
+        } else {
+            out.status = RES_NO;
+            return;
+        }
+    }
+    else if ((cmd.size() == 3) && cmd[0] == "set") {
+        archive[cmd[1]].swap(cmd[2]);
+    }
+    else if ((cmd.size() == 2) && cmd[0] == "del") {
+        archive.erase(cmd[1]);
+    }
+    else {
+        out.status = RES_ERR;   // command was not recognised, error status
+    }
+}
+
+static void respond(const Response &response, std::vector<uint8_t> &out) {
+    uint32_t responselength = 4 + (uint32_t)response.data.size();
+    append_buffer(out, (const uint8_t *)&responselength, 4);    // header - entire msg length prefix
+    append_buffer(out, (const uint8_t *)&response.status, 4);   // status code
+    append_buffer(out, response.data.data(), response.data.size());    // payload
+}
 
 static bool try_single_request(Connected *connected) {
-    /* try to parse the accumulated buffer
-        process the parsed message
-        remove the message from incoming buffer  */
+    /*  1. try to parse the accumulated buffer
+        2. process the parsed message
+        3. remove the message from incoming buffer  */
 
     // check that the data suffices a header at least
     if (connected->incoming.size() < 4) {
@@ -123,7 +219,7 @@ static bool try_single_request(Connected *connected) {
 
     uint32_t len = 0;
     memcpy(&len, connected->incoming.data(), 4);
-    if (len > k_max_msg) {
+    if (len > max_msg) {
         perror("Incoming data exceeds request limit");
         connected->want_close = true;   // want to close 
         return false; 
@@ -134,14 +230,24 @@ static bool try_single_request(Connected *connected) {
     }
 
     const uint8_t *request = &connected->incoming[4];
+    // (kv-server) - *request points to (what will be) the beginning of the cmd payload
+                    //  outer byte size header has been stripped bcuz atp, its a valid msg. 
+                    // the logic you do now is INSIDE that msg, relevant to the redis
+    std::vector<std::string> cmd;
+    if (requestParse(request, len, cmd) < 0) {
+        perror("cannot parse client request");
+        connected->want_close = true;
+        return false;
+    }
+    // check for close command (?)
+    if ((cmd.size() == 1) && cmd[0] == "close") {
+        connected->want_close = true;
+        return true;
+    }
 
-    // request parsed, print it for your own sake
-    printf("client msg-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), request);
-
-    // echo client message (for now) from the server
-    // so just take the data from ::incoming and put in ::outgoing
-    append_buffer(connected->outgoing, (const uint8_t *)&len, 4);
-    append_buffer(connected->outgoing, request, len);
+    Response srv_resp;
+    do_request(cmd, srv_resp);
+    respond(srv_resp, connected->outgoing);
     // consume message from connected::incoming to clear the buffer
     consume_buffer(connected->incoming, 4 + len);
     return true; // successfully parsed a complete message - (bool) let the caller know
@@ -166,20 +272,21 @@ static void nb_read(Connected *connected) {
             return;
         }
     }
+    // shutdown client read
     if (rv == 0){
-        if (connected->incoming.empty()){
-            connected->want_close = true; // close cleanly
-            return;
-        } else {
-            perror("CLOSE: unexpected EOF");
-            connected->want_close = true; // EOF - ask to close connection
-            return;
+        if (connected->incoming.size() != 0) {
+            printf("unexpected client EOF");
         }
+        connected->want_close = true;
+        return;
     }
     // put everything read from rbuf into ::incoming for this connection
     append_buffer(connected->incoming, rbuf, (size_t)rv);
     // check if the data in the buffer makes a complete request
-    while (try_single_request(connected)) {}
+    while (try_single_request(connected)) {
+        printf("request RECEIVED\n");
+        fflush(stdout);
+    }
 
     // if the program has response for this connection, change flag to write
     if (connected->outgoing.size() > 0) {   
@@ -230,6 +337,7 @@ int main() {
 
     // listening socket fd
     int fd = socket(AF_INET, SOCK_STREAM, 0);
+    printf("\nintialising socket...\n");
 
     // allow the socket to reuse its address
     int val = 1;
@@ -242,6 +350,7 @@ int main() {
     addr.sin_addr.s_addr = htonl(0); //wildcard 0.0.0.0 - htonl() converts addr to net long
 
     int rv  = bind(fd, (const struct sockaddr *)&addr, sizeof(addr));
+    printf("binding address...\n");
     if (rv) {
         std::cerr << "bind() failed: ";
         perror(nullptr); // This will print the error message corresponding to errno
@@ -250,6 +359,7 @@ int main() {
 
     // listen for incoming connections
     rv = listen(fd, SOMAXCONN);
+    printf("listening...\n\n");
     if (rv) {
         std::cerr << "listen() failed: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
@@ -264,6 +374,7 @@ int main() {
     // event loop
     std::vector<pollfd> socketNotifiers; // list of socket notifiers
     while (true) {
+
         socketNotifiers.clear();
         // listening socket first into notifiers
         struct pollfd askListen = {fd, POLLIN, 0};
@@ -287,6 +398,7 @@ int main() {
             }
             if (rv < 0) {
                 std::cerr << "poll() failure" << std::endl;
+                return -1;
             }
 
         /* if program is here, then at least one of the sockets is ready, its notifier active */
@@ -321,8 +433,9 @@ int main() {
                 nb_write(connected);
             }
             if ((ready & POLLERR) || connected->want_close) {
-                // error, close the connection
-                std::cout << "CLOSED CLIENT CONNECTION" << std::endl;
+                // close the connection on error
+                // OR close on flag intent
+                std::cout << "CLOSED CLIENT CONNECTION\n" << std::endl;
                 (void)close(connected->fd);
                 fd_conn_map[connected->fd] = NULL;
                 delete connected;

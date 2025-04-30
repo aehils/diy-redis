@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <cassert>
 
-const size_t k_max_msg = 32 << 20;
+const size_t max_msg = 4 * 1024;
 
 // add data to the back of a buffer
 static void append_buffer(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
@@ -55,50 +55,68 @@ static int32_t write_all(int fd, const uint8_t *buf, size_t n) {
     return 0;
 }
 
-static int32_t request_send(int fd, const uint8_t *text, size_t len) {
-    // check the length of the message against max limit
-    if (len > k_max_msg) {
+static int32_t request_send(int fd, const std::vector<std::string> &cmd) {
+    uint32_t len = 4;   // 4 bytes reserved for nstr
+    for (const std::string &s : cmd) {
+        len += 4 + s.size();
+    }   // for each string in cmd, add 4 bytes to encode the str size
+    if (len > max_msg) {
         perror("request exceeds permitted length");
         return -1;
+    }   // len carries the entire payload size (excluding msg length prefix)
+
+    uint8_t wbuf[4 + max_msg];
+    memcpy(&wbuf[0], &len, 4);  // length prefix
+    uint32_t nstr = cmd.size();
+    memcpy(&wbuf[4], &nstr, 4); // number of strings
+
+    size_t pos = 8;     // next available idx in wbuf
+    for (const std::string &s : cmd) {
+        uint32_t arglen = (uint32_t)s.size();
+        memcpy(&wbuf[pos], &arglen, sizeof(arglen));
+        memcpy(&wbuf[pos + sizeof(arglen)], s.data(), arglen);
+        pos += sizeof(arglen) + arglen;
     }
-    // creat write buffer, fill it with request body and write to socket
-    std::vector<uint8_t>wbuf;
-    append_buffer(wbuf, (const uint8_t *)&len, 4);
-    append_buffer(wbuf, text, len);
-    return write_all(fd, wbuf.data(), wbuf.size());
+    return write_all(fd, wbuf, 4 + len);
 }
 
-static int32_t response_read(int fd){
-    std::vector<uint8_t>rbuf;
-    // read response header
-    rbuf.resize(4);
-    int32_t err = read_full(fd, &rbuf[0], 4);
+static int32_t response_read(int fd) {
+    errno = 0;
+    uint8_t rbuf[4 + max_msg + 1];
+    int32_t err = read_full(fd, rbuf, 4);   // read length prefix
     if (err) {
-        perror(errno == 0 ? "Unexpected EOF. Check connection" : "No response from server");
-        return err;
-    }
-    // get response length
-    uint32_t len = 0;
-    memcpy(&len, &rbuf[0], 4);
-    if (len > k_max_msg) {
-        perror("Server response exceeds permitted length");
-        return -1;
-    }
-    
-    //read response body
-    rbuf.resize(4 + len);
-    err = read_full(fd, &rbuf[4], len);
-    if (err) {
-        perror("Error reading server response body");
+        if (errno == 0) {
+            printf("EOF\n");
+        } else {
+            perror("response not received from server"); }
         return err;
     }
 
-    // print the response now that you have it
-    printf("server says-> len: %u, data: %.*s\n", len, (len < 100 ? len : 100), &rbuf[4]);
+    uint32_t len = 0;
+    memcpy(&len, rbuf, 4);
+    if (len > max_msg) {
+        perror("server response exceeds permitted length");
+        return -1;
+    }   // evaluating length prefix
+
+    // payload
+    err = read_full(fd, &rbuf[4], len);
+    if (err) {
+        perror("cannot read server response payload");
+        return err;
+    }
+    // print result
+    uint32_t statuscode = 0;
+    if (len < 4) {
+        perror("malformed response read from server");
+        return -1;
+    }
+    memcpy(&statuscode, &rbuf[4], 4); // acquire status code
+    printf("server says: [%u] %.*s\n", statuscode, len - 4, &rbuf[8]);
     return 0;
 }
 
-int main() {
+int main(int argc, char **argv) {
     
     int fd {socket(AF_INET, SOCK_STREAM, 0)};
     int reuseBool {1};
@@ -116,32 +134,21 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // send batch of requests
-    std::vector<std::string> queries = { 
-        "hello1", "hello2", "hello3",
-        std::string(k_max_msg, 'z'),
-        "hello5"
-
-    };
-    for (const std::string &s : queries) {
-        int32_t err = request_send(fd, (uint8_t *)s.data(), s.size());
-        if (err) {
-            perror("request not sent to server");
-            goto L_DONE;
-        }
+    std::vector<std::string> cmd;
+    for (int i = 1; i < argc; ++i) {
+        cmd.push_back(argv[i]);
     }
-    // take a batch of responses
-    for (size_t i = 0; i < queries.size(); i++) {
-        int32_t err = response_read(fd);
-        if (err) {
-            perror("server response not read");
-            goto L_DONE;
-        }
+
+    int32_t err = request_send(fd, cmd);
+    if (err) {
+        goto L_DONE;
+    }
+    err = response_read(fd);
+    if (err) {
+        goto L_DONE;
     }
 
     L_DONE:
         close(fd);
         return 0;
-
-    return 0;
 }
