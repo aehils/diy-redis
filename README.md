@@ -150,16 +150,15 @@ This project demonstrates several important concepts in systems programming:
 I have plans to make enhancements to this program. These include:
 
 1. Adding more data types (lists, sets, hashes)
-2. Implement persistence (snapshots or append-only files)
-3. **Serialization / Persistence**  
+2. **Serialization / Persistence**  
    Implement RDB/AOF-style snapshotting and append-only file logging to disk for data durability.  
-4. **AVL Tree / Sorted Sets**  
+3. **AVL Tree / Sorted Sets**  
    Add support for sorted sets via an AVL tree (or skiplist) to enable range queries and ranking operations.  
-5. **Timers & Key Expiry**  
+4. **Timers & Key Expiry**  
    Integrate a timer system (e.g. using a min-heap) for efficient key expiration and timeouts.  
-6. **Binary Heap for Eviction**  
+5. **Binary Heap for Eviction**  
    Use a binary heap to manage eviction policies (LRU, LFU) and fast access to the “next-to-evict” key.  
-7. **Threaded I/O & Sharding**  
+6. **Threaded I/O & Sharding**  
    Introduce threading (or async worker pools) to parallelize I/O and command processing, plus data sharding for horizontal scaling.  
 
 ## Acknowledgements
