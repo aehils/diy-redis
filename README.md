@@ -137,7 +137,7 @@ Compared to a full Redis implementation, my Redis has several limitations in its
 
 ## Learning Objectives
 
-This project demonstrates several important concepts in systems programming:
+My work here demonstrates several important concepts in systems programming:
 
 1. Socket programming and TCP networking
 2. Non-blocking I/O and event loops
@@ -147,7 +147,7 @@ This project demonstrates several important concepts in systems programming:
 
 ## Future Enhancements
 
-I have plans to make enhancements to this program. These include:
+I have plans to make enhancements to this program. They will include, but perhaps not be limited to:
 
 1. Adding more data types (lists, sets, hashes)
 2. **Serialization / Persistence**  
