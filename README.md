@@ -163,6 +163,6 @@ I have plans to make enhancements to this program. They will include, but perhap
 
 ## Acknowledgements
 
-This project was inspired by the "Build Your Own Redis" tutorial series at https://build-your-own.org/redis/. The implementation follows the guidance provided in the tutorial but with custom modifications and enhancements.
+This project was inspired by the "Build Your Own Redis" tutorial series at https://build-your-own.org/redis/. My implementation follows the guidance provided in the tutorial but with my own spin on things. Please enjoy! Feedback is always welcome.
 
 
