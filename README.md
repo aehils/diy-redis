@@ -1,6 +1,6 @@
 # DIY Redis: High Performance In-Memory Data Store in C/C++
 
-This is an implementation of a Redis-like server from scratch in C++. Redis is an in-memory data structure store, used as a database, cache, message broker, and streaming engine. My implementation focuses on the core networking and data storage aspects of Redis, building a TCP server that can handle multiple concurrent connections and process basic Redis commands. It includes:
+This is an implementation of a Redis-like server from scratch in C++. It is an in-memory data structure store that can be used as a database, cache, message broker, or streaming engine. My implementation focuses on the core networking, infrastructure and data storage aspects of Redis. It includes:
 
 1. A TCP server that can handle multiple concurrent client connections
 2. A non-blocking I/O model with an event loop
@@ -8,11 +8,11 @@ This is an implementation of a Redis-like server from scratch in C++. Redis is a
 4. Basic key-value operations (GET, SET, DEL)
 5. A simple client implementation for testing
 
-Redis is one of the most widely-used pieces of infrastructure software today, powering systems at companies like Twitter, GitHub, Snapchat, StackOverflow, and others. It's open source, incredibly fast, and packed with features.
+Redis is one of the most widely-used pieces of infrastructure software today as it turns out, powering systems important to folks like Twitter, GitHub, Snapchat, StackOverflow, etc. It's open source, it's fast, and it's versatile.
 
 ## Architecture
 
-The project consists of two main components:
+This project consists of two main components:
 
 ### TCP Server (`tcp_serv.cpp`)
 
