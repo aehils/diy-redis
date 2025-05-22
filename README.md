@@ -1,6 +1,6 @@
-# DIY Redis: High Performance In-Memory Data Store in C/C++
+# DIY Redis: High-Performance In-Memory Data Store in C/C++
 
-This is an implementation of a Redis-like server from scratch in C++. It is an in-memory data structure store that can be used as a database, cache, message broker, or streaming engine. My implementation focuses on the core networking, infrastructure and data storage aspects of Redis. It includes:
+This is my implementation of a Redis-compatible server from scratch in C++. Redis is an in-memory data structure store that can be used as a database, cache, message broker, or streaming engine. This project focuses on the core networking, infrastructure and data storage aspects of Redis. It includes:
 
 1. A TCP server that can handle multiple concurrent client connections
 2. A non-blocking I/O model with an event loop
@@ -8,11 +8,11 @@ This is an implementation of a Redis-like server from scratch in C++. It is an i
 4. Basic key-value operations (GET, SET, DEL)
 5. A simple client implementation for testing
 
-Redis is one of the most widely-used pieces of infrastructure software today as it turns out, powering systems important to folks like Twitter, GitHub, Snapchat, StackOverflow, etc. It's open source, it's fast, and it's versatile.
+Redis is one of the most widely-used pieces of infrastructure software today, powering systems important to folks like Twitter, GitHub, Snapchat, StackOverflow, etc. It's open source, it's fast, and it's versatile. In other words, it's very handy!
 
 ## Architecture
 
-This project consists of two main components:
+The project consists of two main components:
 
 ### TCP Server (`tcp_serv.cpp`)
 
@@ -27,12 +27,12 @@ The server component implements:
 
 The client component implements:
 - Socket connection to the server
-- Message serialization according to the custom protocol
+- Message serialisation according to the custom protocol
 - Command-line interface for sending commands to the server
 
 ## Protocol
 
-The project uses a custom binary protocol for communication:
+The project uses a custom wire protocol for communication:
 
 **Request Format:**
 ```
@@ -63,14 +63,14 @@ The server uses non-blocking I/O to handle multiple client connections concurren
 - `poll()` system call to wait for socket events
 - Buffer management for partial reads and writes
 
-### Connection Management
+### How the server handles connections
 
 The server maintains a map of client connections, each represented by a `Connected` struct that contains:
 - File descriptor for the client socket
 - Flags indicating whether the connection wants to read, write, or close
 - Buffers for incoming and outgoing data
 
-### Request Processing
+### How the server handles requests from clients
 
 When data is received from a client:
 1. It's appended to the client's incoming buffer
@@ -90,17 +90,20 @@ When data is received from a client:
 
 ```bash
 # Compile the server
-g++ -std=c++11 tcp_serv.cpp -o server
+g++ tcp_serv.cpp -o server
 
 # Compile the client
-g++ -std=c++11 tcp_client.cpp -o client
+g++ tcp_client.cpp -o client
 ```
 
 ### Running
 
-Start the server:
+Start the server and/or the client after compiling:
 ```bash
 ./server
+```
+```bash
+./client
 ```
 
 Use the client to send commands:
@@ -119,7 +122,7 @@ Use the client to send commands:
 
 1. **Non-blocking I/O**: The server uses non-blocking I/O to handle multiple clients concurrently without threads, which is more efficient for this use case.
 
-2. **Binary Protocol**: A binary protocol was chosen over a text-based one for efficiency and to match Redis's approach.
+2. **Binary Protocol**: A binary protocol was chosen over a text-based one. This efficiency is inspired by Redis.
 
 3. **In-memory Storage**: Data is stored in memory using a C++ `std::map`, similar to Redis's primary storage mechanism.
 
@@ -141,7 +144,7 @@ My work here demonstrates several important concepts in systems programming:
 
 1. Socket programming and TCP networking
 2. Non-blocking I/O and event loops
-3. Binary protocol design and implementation
+3. Customsing wire format for a binary protocol
 4. Buffer management and parsing
 5. Concurrent server design patterns
 
