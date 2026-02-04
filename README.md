@@ -1,38 +1,38 @@
 # DIY Redis: High-Performance In-Memory Data Store in C/C++
 
-This is my implementation of a Redis-compatible server from scratch in C++. Redis is an in-memory data structure store that can be used as a database, cache, message broker, or streaming engine. This project focuses on the core networking, infrastructure and data storage aspects of Redis. It includes:
+This is my implementation of a Redis from scratch in C++. Redis is an in-memory data structure store that can be used as a database, cache, message broker, or streaming engine. I've focused on the core networking, infrastructure and data storage aspects of Redis. That includes:
 
-1. A TCP server that can handle multiple concurrent client connections
+1. A TCP server that can handle concurrent client connections
 2. A non-blocking I/O model with an event loop
 3. A custom binary protocol for client-server communication
-4. Basic key-value operations (GET, SET, DEL)
+4. Basic key-value operations (GET, SET, DEL, UPDATE)
 5. A simple client implementation for testing
 
-Redis is one of the most widely-used pieces of infrastructure software today, powering systems important to folks like Twitter, GitHub, Snapchat, StackOverflow, etc. It's open source, it's fast, and it's versatile. In other words, it's very handy!
+Redis is one of the most widely-used pieces of infrastructure software today, powering systems important to folks like Twitter, GitHub, Snapchat, StackOverflow, etc. It's open source, it's fast, and it's versatile.
 
 ## Architecture
 
-The project consists of two main components:
+Two main components:
 
 ### TCP Server (`tcp_serv.cpp`)
 
 The server component implements:
-- Socket creation and connection handling
+- Sockets and connection handling
 - Non-blocking I/O operations
 - An event loop using the `poll()` syscall
 - Request parsing and response generation
-- In-memory key-value storage using a C++ STL map
+- In-memory key-value storage using a C++ STL map (for now)
 
 ### TCP Client (`tcp_client.cpp`)
 
 The client component implements:
 - Socket connection to the server
 - Message serialisation according to the custom protocol
-- Command-line interface for sending commands to the server
+- CLI for sending commands to the server
 
 ## Protocol
 
-The project uses a custom wire protocol for communication:
+I'm using a custom wire protocol for communication:
 
 **Request Format:**
 ```
@@ -57,27 +57,11 @@ The server currently supports the following commands:
 
 ### Non-blocking I/O
 
-The server uses non-blocking I/O to handle multiple client connections concurrently without using threads. Key components include:
+The server uses non-blocking I/O to handle multiple client connections concurrently without using threads. Note:
 
 - `set_nonblocking()` - my helper function to set socket file descriptors to non-blocking mode
 - `poll()` system call to wait for socket events
 - Buffer management for partial reads and writes
-
-### How the server handles connections
-
-The server maintains a map of client connections, each represented by a `Connected` struct that contains:
-- File descriptor for the client socket
-- Flags indicating whether the connection wants to read, write, or close
-- Buffers for incoming and outgoing data
-
-### How the server handles requests from clients
-
-When data is received from a client:
-1. It's appended to the client's incoming buffer
-2. The server attempts to parse complete requests from the buffer
-3. Each request is processed by the appropriate command handler
-4. The response is generated and added to the client's outgoing buffer
-5. The server switches to write mode to send the response back to the client
 
 ## Building and Running
 
@@ -87,6 +71,8 @@ When data is received from a client:
 - POSIX-compliant system (Linux, macOS, etc.)
 
 ### Building
+
+You can clone the repo or download the zip if you also want to try this out in its current state. You can store any data structure in your fast-access memory, which of course means that data is quickly retrivable. Perhaps use as a caching server on your Pi.
 
 ```bash
 # Compile the server
@@ -118,35 +104,15 @@ Use the client to send commands:
 ./client del "crimson cipher"
 ```
 
-## Design Choices
-
-1. **Non-blocking I/O**: The server uses non-blocking I/O to handle multiple clients concurrently without threads, which is more efficient for this use case.
-
-2. **Binary Protocol**: A binary protocol was chosen over a text-based one. This efficiency is inspired by Redis.
-
-3. **In-memory Storage**: Data is stored in memory using a C++ `std::map`, similar to Redis's primary storage mechanism.
-
-4. **Error Handling**: The server includes comprehensive error handling for socket operations and protocol parsing.
-
 ## Limitations
 
 Compared to a full Redis implementation, my Redis has several limitations in its current state:
 
-1. Only supports basic key-value operations (GET, SET, DEL)
-2. No persistence mechanisms
+1. Only supports a few basic key-value operations (GET, SET, DEL)
+2. No persistence yet
 3. No data types beyond strings
 4. No authentication or access control
 5. No clustering or replication capabilities
-
-## Learning Objectives
-
-My work here demonstrates several important concepts in systems programming:
-
-1. Socket programming and TCP networking
-2. Non-blocking I/O and event loops
-3. Customsing wire format for a binary protocol
-4. Buffer management and parsing
-5. Concurrent server design patterns
 
 ## Future Enhancements
 
